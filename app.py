@@ -2,10 +2,11 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
+from sklearn.decomposition import PCA
 from scipy.stats import ttest_ind
 
 # Title of the app
-st.title('Researcher Tool: Guided Variable Analysis')
+st.title('Researcher Tool: Guided Variable Analysis with PCA')
 
 # Step 1: Upload Excel File
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
@@ -56,41 +57,53 @@ if uploaded_file:
     elif num_vars == 3:
         st.write(f"You have selected {num_vars} variables, so we'll generate a 3D scatter plot for visualization.")
     else:
-        st.write(f"You have selected {num_vars} variables, so dimensionality reduction will be required.")
+        st.markdown(f"<div style='border: 2px solid green; padding: 10px;'>"
+                    f"You have selected {num_vars} variables, so dimensionality reduction is recommended. We'll use Principal Component Analysis (PCA) for better visualization.</div>", 
+                    unsafe_allow_html=True)
 
-    # Only proceed if the user selects at least one numeric variable
-    if num_vars > 0:
-        # Step 6: Data Visualization and Analysis
-        if num_vars == 1:
-            st.write(f"### Analysis for Variable: {selected_numeric_cols[0]}")
+        # Step 6: Briefly explain PCA and allow the user to select the number of components
+        st.write("#### What is PCA?")
+        st.info("PCA is a dimensionality reduction technique that transforms the data into fewer dimensions while retaining most of the important information (variance).")
 
-            # Visualize the data with a boxplot (1 variable)
-            fig, ax = plt.subplots()
-            df.boxplot(column=selected_numeric_cols[0], by=group_col, ax=ax)
-            plt.title(f'Boxplot of {selected_numeric_cols[0]} by {group_col}')
-            plt.suptitle('')  # Suppress the default title
-            st.pyplot(fig)
+        # Let the user choose how many components to use
+        num_components = st.slider("Select the number of PCA components (2 or 3)", min_value=2, max_value=3, value=2)
 
-        elif num_vars == 2:
-            st.write(f"### 2D Scatter Plot for Variables: {selected_numeric_cols[0]} and {selected_numeric_cols[1]}")
+        # Step 7: Perform PCA and evaluate variance explained
+        pca = PCA(n_components=num_components)
+        pca_result = pca.fit_transform(df[selected_numeric_cols])
+        explained_variance = pca.explained_variance_ratio_
 
-            # Visualize with a 2D scatter plot (2 variables)
-            fig = px.scatter(df, x=selected_numeric_cols[0], y=selected_numeric_cols[1], color=group_col,
-                             title=f'{selected_numeric_cols[0]} vs {selected_numeric_cols[1]} by {group_col}')
+        st.write(f"#### PCA Variance Explained with {num_components} components:")
+        st.write(f"Total variance explained: {explained_variance.sum() * 100:.2f}%")
+
+        if num_components == 2:
+            st.write(f"Variance explained by PC1: {explained_variance[0] * 100:.2f}%")
+            st.write(f"Variance explained by PC2: {explained_variance[1] * 100:.2f}%")
+        elif num_components == 3:
+            st.write(f"Variance explained by PC1: {explained_variance[0] * 100:.2f}%")
+            st.write(f"Variance explained by PC2: {explained_variance[1] * 100:.2f}%")
+            st.write(f"Variance explained by PC3: {explained_variance[2] * 100:.2f}%")
+
+        # Step 8: Visualize PCA results (2D or 3D plot)
+        if num_components == 2:
+            st.write("### 2D PCA Cluster Plot")
+            pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
+            pca_df[group_col] = df[group_col]
+            fig = px.scatter(pca_df, x='PC1', y='PC2', color=group_col, title="2D PCA Cluster Plot")
             st.plotly_chart(fig)
 
-        elif num_vars == 3:
-            st.write(f"### 3D Scatter Plot for Variables: {selected_numeric_cols[0]}, {selected_numeric_cols[1]}, and {selected_numeric_cols[2]}")
-
-            # Visualize with a 3D scatter plot (3 variables)
-            fig = px.scatter_3d(df, x=selected_numeric_cols[0], y=selected_numeric_cols[1], z=selected_numeric_cols[2], color=group_col,
-                                title=f'{selected_numeric_cols[0]} vs {selected_numeric_cols[1]} vs {selected_numeric_cols[2]} by {group_col}')
+        elif num_components == 3:
+            st.write("### 3D PCA Cluster Plot")
+            pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2', 'PC3'])
+            pca_df[group_col] = df[group_col]
+            fig = px.scatter_3d(pca_df, x='PC1', y='PC2', z='PC3', color=group_col, title="3D PCA Cluster Plot")
             st.plotly_chart(fig)
 
-        else:
-            st.write("More than 3 numeric variables selected. Dimensionality reduction required. (You could add PCA here later)")
+        st.markdown("<div style='border: 2px solid blue; padding: 10px;'>"
+                    "This plot visualizes the selected variables in reduced dimensions, with different colors for each group.</div>", 
+                    unsafe_allow_html=True)
 
-        # Step 7: Perform t-tests for each selected variable
+        # Step 9: Perform t-tests for each selected variable
         st.write("### Performing t-tests for numeric variables:")
         results = []
         for col in selected_numeric_cols:
@@ -117,9 +130,7 @@ if uploaded_file:
                 'Significant Difference': 'Yes' if p_val < alpha else 'No'
             })
 
-        # Step 8: Display summary table of t-test results
+        # Step 10: Display summary table of t-test results
         st.write("### Summary of t-test Results")
         results_df = pd.DataFrame(results)
         st.dataframe(results_df)
-    else:
-        st.error("Please select at least one numeric variable for analysis.")
