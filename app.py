@@ -36,12 +36,30 @@ if uploaded_file:
 
     # Step 5: Let the user select variables to include in the study
     st.write("### Select Variables to Include in the Study")
-    selected_numeric_cols = st.multiselect("Select numeric variables to include", numeric_columns, default=numeric_columns)
+    selected_numeric_cols = []
+
+    # Checkbox for each numeric column to allow the user to include/exclude variables
+    for col in numeric_columns:
+        include_var = st.checkbox(f"Include {col}", value=False)
+        if include_var:
+            selected_numeric_cols.append(col)
+
+    # Dynamic message based on the number of selected variables
+    num_vars = len(selected_numeric_cols)
+    
+    if num_vars == 0:
+        st.write("Please select at least one numeric variable for analysis.")
+    elif num_vars == 1:
+        st.write(f"You have selected {num_vars} variable, so we'll generate a boxplot for comparison.")
+    elif num_vars == 2:
+        st.write(f"You have selected {num_vars} variables, so we'll generate a 2D scatter plot for visualization.")
+    elif num_vars == 3:
+        st.write(f"You have selected {num_vars} variables, so we'll generate a 3D scatter plot for visualization.")
+    else:
+        st.write(f"You have selected {num_vars} variables, so dimensionality reduction will be required.")
 
     # Only proceed if the user selects at least one numeric variable
-    if selected_numeric_cols:
-        num_vars = len(selected_numeric_cols)
-
+    if num_vars > 0:
         # Step 6: Data Visualization and Analysis
         if num_vars == 1:
             st.write(f"### Analysis for Variable: {selected_numeric_cols[0]}")
@@ -70,7 +88,7 @@ if uploaded_file:
             st.plotly_chart(fig)
 
         else:
-            st.write("More than 3 numeric variables selected. No plot will be generated.")
+            st.write("More than 3 numeric variables selected. Dimensionality reduction required. (You could add PCA here later)")
 
         # Step 7: Perform t-tests for each selected variable
         st.write("### Performing t-tests for numeric variables:")
