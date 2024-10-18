@@ -1,8 +1,10 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import plotly.express as px
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 from scipy.stats import ttest_ind
 
 # Title of the app
@@ -66,6 +68,9 @@ if uploaded_file:
                     f"You have selected {num_vars} variables, so dimensionality reduction is recommended. We'll use Principal Component Analysis (PCA) for better visualization.</div>", 
                     unsafe_allow_html=True)
 
+        # Handle missing or infinite values
+        df_clean = df[selected_numeric_cols].replace([np.inf, -np.inf], np.nan).dropna()
+
         # Step 6: Briefly explain PCA and allow the user to select the number of components
         st.write("#### What is PCA?")
         st.info("PCA is a dimensionality reduction technique that transforms the data into fewer dimensions while retaining most of the important information (variance).")
@@ -75,7 +80,9 @@ if uploaded_file:
 
         # Step 7: Perform PCA and evaluate variance explained
         pca = PCA(n_components=num_components)
-        pca_result = pca.fit_transform(df[selected_numeric_cols])
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(df_clean)
+        pca_result = pca.fit_transform(scaled_data)
         explained_variance = pca.explained_variance_ratio_
 
         st.write(f"#### PCA Variance Explained with {num_components} components:")
@@ -93,14 +100,14 @@ if uploaded_file:
         if num_components == 2:
             st.write("### 2D PCA Cluster Plot")
             pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
-            pca_df[group_col] = df[group_col]
+            pca_df[group_col] = df[group_col].values
             fig = px.scatter(pca_df, x='PC1', y='PC2', color=group_col, title="2D PCA Cluster Plot")
             st.plotly_chart(fig)
 
         elif num_components == 3:
             st.write("### 3D PCA Cluster Plot")
             pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2', 'PC3'])
-            pca_df[group_col] = df[group_col]
+            pca_df[group_col] = df[group_col].values
             fig = px.scatter_3d(pca_df, x='PC1', y='PC2', z='PC3', color=group_col, title="3D PCA Cluster Plot")
             st.plotly_chart(fig)
 
@@ -108,7 +115,7 @@ if uploaded_file:
                     "This plot visualizes the selected variables in reduced dimensions, with different colors for each group.</div>", 
                     unsafe_allow_html=True)
 
-        # Step 9: Perform t-tests for each selected variablehttps://github.com/fanninedenyi/data_analyzing_tool/blob/main/app.py
+        # Step 9: Perform t-tests for each selected variable
         st.write("### Performing t-tests for numeric variables:")
         results = []
         for col in selected_numeric_cols:
