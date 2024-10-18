@@ -65,17 +65,37 @@ if uploaded_file:
         st.write("Please select at least one numeric variable for analysis.")
     else:
         # Remove rows with NaN values in the selected numeric columns
-        df_clean = df[selected_numeric_cols].dropna()
+        df_clean = df[selected_numeric_cols + [group_col]].dropna()
 
         st.write(f"Data after removing rows with NaN values in the selected columns:")
         st.dataframe(df_clean)
 
         if num_vars == 1:
             st.write(f"You have selected {num_vars} variable, so we'll generate a boxplot for comparison.")
+
+            # Generate a boxplot
+            fig, ax = plt.subplots()
+            df_clean.boxplot(column=selected_numeric_cols[0], by=group_col, ax=ax)
+            plt.title(f'Boxplot of {selected_numeric_cols[0]} by {group_col}')
+            plt.suptitle('')  # Suppress the default title
+            st.pyplot(fig)
+
         elif num_vars == 2:
             st.write(f"You have selected {num_vars} variables, so we'll generate a 2D scatter plot for visualization.")
+
+            # Generate a 2D scatter plot
+            fig = px.scatter(df_clean, x=selected_numeric_cols[0], y=selected_numeric_cols[1], color=group_col,
+                             title=f'{selected_numeric_cols[0]} vs {selected_numeric_cols[1]} by {group_col}')
+            st.plotly_chart(fig)
+
         elif num_vars == 3:
             st.write(f"You have selected {num_vars} variables, so we'll generate a 3D scatter plot for visualization.")
+
+            # Generate a 3D scatter plot
+            fig = px.scatter_3d(df_clean, x=selected_numeric_cols[0], y=selected_numeric_cols[1], z=selected_numeric_cols[2], color=group_col,
+                                title=f'{selected_numeric_cols[0]} vs {selected_numeric_cols[1]} vs {selected_numeric_cols[2]} by {group_col}')
+            st.plotly_chart(fig)
+
         else:
             st.markdown(f"<div style='border: 2px solid green; padding: 10px;'>"
                         f"You have selected {num_vars} variables, so dimensionality reduction is recommended. We'll use Principal Component Analysis (PCA) for better visualization.</div>", 
@@ -91,7 +111,7 @@ if uploaded_file:
             # Step 7: Perform PCA and evaluate variance explained
             pca = PCA(n_components=num_components)
             scaler = StandardScaler()
-            scaled_data = scaler.fit_transform(df_clean)
+            scaled_data = scaler.fit_transform(df_clean[selected_numeric_cols])
             pca_result = pca.fit_transform(scaled_data)
             explained_variance = pca.explained_variance_ratio_
 
@@ -110,14 +130,14 @@ if uploaded_file:
             if num_components == 2:
                 st.write("### 2D PCA Cluster Plot")
                 pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
-                pca_df[group_col] = df[group_col].values
+                pca_df[group_col] = df_clean[group_col].values
                 fig = px.scatter(pca_df, x='PC1', y='PC2', color=group_col, title="2D PCA Cluster Plot")
                 st.plotly_chart(fig)
 
             elif num_components == 3:
                 st.write("### 3D PCA Cluster Plot")
                 pca_df = pd.DataFrame(pca_result, columns=['PC1', 'PC2', 'PC3'])
-                pca_df[group_col] = df[group_col].values
+                pca_df[group_col] = df_clean[group_col].values
                 fig = px.scatter_3d(pca_df, x='PC1', y='PC2', z='PC3', color=group_col, title="3D PCA Cluster Plot")
                 st.plotly_chart(fig)
 
@@ -129,8 +149,8 @@ if uploaded_file:
             st.write("### Performing t-tests for numeric variables:")
             results = []
             for col in selected_numeric_cols:
-                group_a = df_clean[df[group_col] == df[group_col].unique()[0]][col]
-                group_b = df_clean[df[group_col] == df[group_col].unique()[1]][col]
+                group_a = df_clean[df_clean[group_col] == df_clean[group_col].unique()[0]][col]
+                group_b = df_clean[df_clean[group_col] == df_clean[group_col].unique()[1]][col]
 
                 t_stat, p_val = ttest_ind(group_a, group_b, nan_policy='omit')
 
