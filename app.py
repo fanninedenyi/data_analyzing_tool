@@ -8,12 +8,17 @@ from scipy.stats import ttest_ind
 # Title of the app
 st.title('Researcher Tool: Guided Variable Analysis with PCA')
 
-# Step 1: Upload Excel File
-uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
+# Step 1: Upload Excel or CSV File
+uploaded_file = st.file_uploader("Upload your file (Excel or CSV)", type=["xlsx", "csv"])
 
 if uploaded_file:
-    # Step 2: Read the Excel file
-    df = pd.read_excel(uploaded_file)
+    # Step 2: Read the file based on its extension
+    file_extension = uploaded_file.name.split('.')[-1]
+    
+    if file_extension == 'xlsx':
+        df = pd.read_excel(uploaded_file)
+    elif file_extension == 'csv':
+        df = pd.read_csv(uploaded_file)
 
     # Display the dataframe
     st.write("Data Preview:")
@@ -103,7 +108,7 @@ if uploaded_file:
                     "This plot visualizes the selected variables in reduced dimensions, with different colors for each group.</div>", 
                     unsafe_allow_html=True)
 
-        # Step 9: Perform t-tests for each selected variable
+        # Step 9: Perform t-tests for each selected variablehttps://github.com/fanninedenyi/data_analyzing_tool/blob/main/app.py
         st.write("### Performing t-tests for numeric variables:")
         results = []
         for col in selected_numeric_cols:
